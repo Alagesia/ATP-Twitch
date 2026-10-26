@@ -97,6 +97,11 @@ function checkMedia(seg, info) {
 			parts.push(Buffer.from(out.мбСегментИнициализации));
 		}
 		parts.push(Buffer.from(out.мбМедиасегмент));
+		// Same check as player.js м_Статистика.ПолученПреобразованныйСегмент
+		if (Number.isFinite(out.чСредняяДлительностьВидеоСемпла) && !(out.чМинДлительностьВидеоСемпла <= out.чМаксДлительностьВидеоСемпла)) {
+			console.log(`${files[i]}: PLAYER WOULD CRASH: frame duration stats min=${out.чМинДлительностьВидеоСемпла} avg=${out.чСредняяДлительностьВидеоСемпла} max=${out.чМаксДлительностьВидеоСемпла}`);
+			process.exitCode = 1;
+		}
 		const r = checkMedia(out.мбМедиасегмент);
 		const v = r.video, a = r.audio;
 		let line = `${files[i]}: in=${data.length}B out=${out.мбМедиасегмент.length}B`;

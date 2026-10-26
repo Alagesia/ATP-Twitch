@@ -59,7 +59,7 @@ Firefox Developer Edition and Nightly can install unsigned add-ons permanently w
 The [`upstream-patch`](https://github.com/Alagesia/ATP-Twitch/tree/upstream-patch) branch holds only
 the playback fix (fMP4 + HEVC in `player.js` and `worker.js`) on top of the unmodified 2026.6.21
 source, without the changes that only make sense for this copy (name, crash reports, extra files):
-[view the diff](https://github.com/Alagesia/ATP-Twitch/commit/b348bbaa3545e373ac6f88f1dbcf91cc163c6ff8).
+[view the diff](https://github.com/Alagesia/ATP-Twitch/compare/c4faafb5fefd6cc4124b5227e2e641f01cb81d27...upstream-patch).
 It applies to 2026.6.21 with `git am` or `patch -p1` and is offered under the extension's own BSD
 3-Clause license.
 
