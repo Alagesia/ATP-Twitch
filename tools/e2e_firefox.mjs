@@ -53,7 +53,7 @@ const probe = `(() => {
 	const b = [];
 	for (let i = 0; i < v.buffered.length; i++) b.push([+v.buffered.start(i).toFixed(2), +v.buffered.end(i).toFixed(2)]);
 	const usher = performance.getEntriesByType('resource').map(e => e.name).filter(n => n.includes('usher.ttvnw.net')).pop();
-	return JSON.stringify({codecsRequested: usher && new URL(usher).searchParams.get('supported_codecs'), ready: v.readyState, t: +v.currentTime.toFixed(2), paused: v.paused, size: v.videoWidth + 'x' + v.videoHeight,
+	return JSON.stringify({ad: document.body.classList.contains('реклама'), codecsRequested: usher && new URL(usher).searchParams.get('supported_codecs'), ready: v.readyState, t: +v.currentTime.toFixed(2), paused: v.paused, size: v.videoWidth + 'x' + v.videoHeight,
 		frames: q.totalVideoFrames, dropped: q.droppedVideoFrames, corrupted: q.corruptedVideoFrames, err: v.error && v.error.code,
 		buffered: b, msg: (document.body.innerText.match(/encrypted|error|problem|unable/i) || [''])[0]});
 })()`;
