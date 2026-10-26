@@ -1,0 +1,8 @@
+# Build outputs and local reference copies
+*.xpi
+*.patch
+original/
+
+# Test data downloaded by tools/fetch_fixtures.py
+fixtures/
+__pycache__/

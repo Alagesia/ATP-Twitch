@@ -2,18 +2,23 @@
   "manifest_version": 2,
   "browser_specific_settings": {
     "gecko": {
-      "id": "twitch5@coolcmd",
-      "strict_min_version": "58.0"
+      "id": "alternate-player-mod@alagesia",
+      "strict_min_version": "58.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
   },
-  "name": "Alternate Player for Twitch.tv",
-  "short_name": "Alternate Player",
-  "version": "2026.6.21",
+  "name": "Alternate Player for Twitch.tv (fMP4 mod)",
+  "short_name": "Alternate Player (mod)",
+  "version": "2026.6.21.2",
   "description": "__MSG_M0001__",
   "icons": {
     "128": "manifest.svg"
   },
-  "author": "Alexander Choporov (CoolCmd)",
+  "author": "Alagesia (modified version of Alternate Player for Twitch.tv by Alexander Choporov / CoolCmd)",
   "default_locale": "en",
   "permissions": [
     "storage",

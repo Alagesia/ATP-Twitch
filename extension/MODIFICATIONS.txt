@@ -1,0 +1,26 @@
+This is a modified version of "Alternate Player for Twitch.tv" by Alexander Choporov (CoolCmd),
+distributed under the BSD 3-Clause license (see LICENSE). It is not the original extension and is
+not endorsed by its author. Please do not report problems with this version to the original author.
+
+Original: https://addons.mozilla.org/firefox/addon/twitch_5/ (version 2026.6.21)
+Modified version: https://github.com/Alagesia/ATP-Twitch
+
+Changes (2026-10-26):
+
+- fMP4/CMAF segment support. Twitch serves every rendition of channels with a 1440p source as
+  fragmented MP4 (#EXT-X-MAP + .mp4 segments) instead of MPEG-TS. The original player treated
+  #EXT-X-MAP as encryption and showed "This broadcast is encrypted".
+  - player.js: #EXT-X-MAP is parsed instead of rejected (#EXT-X-KEY still is); the init segment is
+    downloaded once, cached, and prepended to every media segment.
+  - worker.js: fMP4 input is demuxed (avcC/esds init, moof/traf/trun fragments, emsg ID3 metadata)
+    into the same sample tables the MPEG-TS demuxer produces, so remuxing, timestamp stitching and
+    statistics are shared. MPEG-TS output is byte-identical to the original version.
+- HEVC (H.265) support, which Twitch uses for the 1440p "source" rendition (offered only to
+  logged-in viewers).
+  - player.js: requests supported_codecs=h265,h264 when the browser's Media Source Extensions can
+    decode HEVC Main level 5.0, otherwise h264 as before. The statistics show the HEVC profile.
+  - worker.js: hev1/hvc1 sample entries; hvcC is passed through, the codec string is derived from
+    it, IRAP pictures (NAL types 16-23) are keyframes.
+- Crash reports and feedback are no longer sent to the original developer; "Send" reloads the player.
+- manifest.json: own add-on ID (alternate-player-mod@alagesia) so it can be signed for permanent
+  installation, name/author/version mark this build as modified, data collection declared as none.

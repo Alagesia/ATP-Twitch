@@ -1,0 +1,76 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>worker.js + MSE test</title>
+<!--
+	Runs the extension's worker.js on raw fixture segments (init.mp4 prepended, like the player does) and
+	plays the output through Media Source Extensions. Serve a folder containing this page, worker.js,
+	wasm.wasm, asmjs.js and fixtures/<dir>/{init.mp4,seg_000.mp4,...}; open mse_test.html?dir=<dir>&n=<count>.
+	The outcome is published in window.result.
+-->
+<video id="v" muted autoplay style="width: 640px"></video>
+<pre id="log"></pre>
+<script>
+'use strict';
+const params = new URLSearchParams(location.search);
+const dir = params.get('dir'), count = Number(params.get('n') || 3);
+const video = document.getElementById('v');
+const log = s => { document.getElementById('log').textContent += s + '\n'; };
+window.result = {state: 'running', log: []};
+
+(async () => {
+	const fetchBuf = async url => { const r = await fetch(url); return r.ok ? r.arrayBuffer() : null; };
+	const init = await fetchBuf(`fixtures/${dir}/init.mp4`);
+	const worker = new Worker('worker.js');
+	const outputs = [];
+	worker.onmessage = ({data}) => {
+		if (data[0] === 1) outputs.push(data[1].пДанные);
+		else if (data[0] === 2) window.result.log.push(...data[2].filter((s, i) => data[1][i] !== 'Вот'));
+		else if (data[0] === 3 || data[0] === 4) { window.result = {state: 'worker failed', error: data[1]}; }
+	};
+	for (let i = 0; i < count; i++) {
+		const seg = await fetchBuf(`fixtures/${dir}/seg_${String(i).padStart(3, '0')}.mp4`);
+		const both = new Uint8Array((init ? init.byteLength : 0) + seg.byteLength);
+		if (init) both.set(new Uint8Array(init), 0);
+		both.set(new Uint8Array(seg), init ? init.byteLength : 0);
+		worker.postMessage({чОбработка: 3, пДанные: both.buffer, чДлительность: 2, лРазрыв: i === 0, чНомер: i + 1, сАдресИнициализации: ''}, [both.buffer]);
+	}
+	const step = s => { window.result.step = s; };
+	step('waiting for worker');
+	while (outputs.length < count && window.result.state === 'running') await new Promise(r => setTimeout(r, 50));
+	if (window.result.state !== 'running') return;
+	const first = outputs[0];
+	window.result.codecs = first.сКодеки;
+	window.result.supported = MediaSource.isTypeSupported(first.сКодеки);
+	log(`codecs: ${first.сКодеки} isTypeSupported=${MediaSource.isTypeSupported(first.сКодеки)} ${first.сСжатиеВидео || ''}`);
+	const ms = new MediaSource();
+	video.src = URL.createObjectURL(ms);
+	step('waiting for sourceopen');
+	await new Promise(r => ms.addEventListener('sourceopen', r, {once: true}));
+	step('addSourceBuffer');
+	const sb = ms.addSourceBuffer(first.сКодеки);
+	video.addEventListener('error', () => { window.result.mediaError = `${video.error.code} ${video.error.message}`; });
+	step('appending');
+	const append = buf => new Promise((res, rej) => { sb.addEventListener('updateend', res, {once: true}); sb.addEventListener('error', rej, {once: true}); sb.appendBuffer(buf); });
+	try {
+		await append(first.мбСегментИнициализации);
+		for (const o of outputs) await append(o.мбМедиасегмент);
+	} catch (e) {
+		window.result = {state: 'append failed', codecs: first.сКодеки, error: String(video.error && video.error.message)};
+		return;
+	}
+	step(`appended, buffered ranges=${sb.buffered.length}`);
+	const start = sb.buffered.start(0);
+	video.currentTime = start;
+	step('playing');
+	await Promise.race([video.play().catch(e => { window.result.playError = String(e); }), new Promise(r => setTimeout(r, 4000))]);
+	await new Promise(r => setTimeout(r, 4000));
+	const q = video.getVideoPlaybackQuality();
+	window.result = {
+		state: 'done', codecs: first.сКодеки, description: first.сСжатиеВидео, size: `${video.videoWidth}x${video.videoHeight}`,
+		buffered: [+sb.buffered.start(0).toFixed(3), +sb.buffered.end(sb.buffered.length - 1).toFixed(3)], ranges: sb.buffered.length,
+		played: +(video.currentTime - start).toFixed(2), frames: q.totalVideoFrames, dropped: q.droppedVideoFrames,
+		error: video.error && `${video.error.code} ${video.error.message}`, log: window.result.log
+	};
+	log(JSON.stringify(window.result));
+})();
+</script>
