@@ -22,5 +22,6 @@ Changes (2026-10-26):
   - worker.js: hev1/hvc1 sample entries; hvcC is passed through, the codec string is derived from
     it, IRAP pictures (NAL types 16-23) are keyframes.
 - Crash reports and feedback are no longer sent to the original developer; "Send" reloads the player.
-- manifest.json: own add-on ID (alternate-player-mod@alagesia) so it can be signed for permanent
-  installation, name/author/version mark this build as modified, data collection declared as none.
+- manifest.json: name, author and version mark this build as modified. The add-on ID stays
+  twitch5@coolcmd so that loading this version temporarily (about:debugging) replaces an installed
+  original for that Firefox session and keeps its settings.

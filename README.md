@@ -22,7 +22,8 @@ of MPEG-TS. The original player only understands MPEG-TS and reports those strea
   logged-in viewers. When Firefox can decode HEVC, the player asks Twitch for it and plays it.
   Stay logged in on twitch.tv and pick "1440p60 (source)" in the quality menu.
 - Crash reports and feedback are not sent to the original developer.
-- Own add-on ID (`alternate-player-mod@alagesia`), so it can be signed and installed permanently.
+- The add-on ID is unchanged (`twitch5@coolcmd`), so loading this version replaces an installed
+  original for that Firefox session and keeps its settings.
 
 Full list: [`extension/MODIFICATIONS.txt`](extension/MODIFICATIONS.txt). The first commit of this
 repository is the unmodified upstream source, so `git diff` against it shows every change.
@@ -30,25 +31,37 @@ Technical details: [`docs/NOTES.md`](docs/NOTES.md).
 
 ## Installing
 
-Remove or disable the original Alternate Player first; with both enabled they would both take over
-Twitch pages.
+Double-click **`Load in Firefox.cmd`** (Windows). It opens Firefox's *This Firefox* page and copies
+the path of `extension/manifest.json` to the clipboard. Click *Load Temporary Add-on…*, press
+Ctrl+V and Enter.
 
-- **Try it (until Firefox restarts):** open `about:debugging#/runtime/this-firefox`, click
-  *Load Temporary Add-on…* and select `extension/manifest.json`.
-- **Permanently:** release Firefox only keeps add-ons signed by Mozilla. Zip the *contents* of
-  `extension/` into an `.xpi`, upload it at
-  [addons.mozilla.org → Submit a New Add-on](https://addons.mozilla.org/developers/addon/submit/distribution),
-  choose **On your own** (unlisted, nothing is published), wait for the automatic signing, download
-  the signed `.xpi` and open it in Firefox. The code is not minified, so no separate source upload is
-  needed. Each new upload needs a higher `version` in `manifest.json`.
+The add-on stays loaded until Firefox is closed completely (all windows, or a restart for an
+update). It replaces an installed original Alternate Player for that session; after a restart the
+original is back, so run the script again. On other systems, open
+`about:debugging#/runtime/this-firefox` and load `extension/manifest.json` by hand.
+
+Permanent installation in release Firefox requires a signature from Mozilla (an
+addons.mozilla.org developer account with two-factor authentication, and a different add-on ID).
+Firefox Developer Edition and Nightly can install unsigned add-ons permanently when
+`xpinstall.signatures.required` is set to `false` in `about:config`.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
+| `Load in Firefox.cmd` | Loads `extension/` into Firefox as a temporary add-on |
 | `extension/` | The extension source (load or zip this folder) |
 | `docs/NOTES.md` | How the player works, Twitch's stream formats, findings |
 | `tools/` | Probe, fixture, worker and Firefox (WebDriver BiDi) test scripts |
+
+## For the original author
+
+The [`upstream-patch`](https://github.com/Alagesia/ATP-Twitch/tree/upstream-patch) branch holds only
+the playback fix (fMP4 + HEVC in `player.js` and `worker.js`) on top of the unmodified 2026.6.21
+source, without the changes that only make sense for this copy (name, crash reports, extra files):
+[view the diff](https://github.com/Alagesia/ATP-Twitch/commit/b348bbaa3545e373ac6f88f1dbcf91cc163c6ff8).
+It applies to 2026.6.21 with `git am` or `patch -p1` and is offered under the extension's own BSD
+3-Clause license.
 
 ## License and attribution
 

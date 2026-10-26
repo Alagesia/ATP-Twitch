@@ -2,13 +2,8 @@
   "manifest_version": 2,
   "browser_specific_settings": {
     "gecko": {
-      "id": "alternate-player-mod@alagesia",
-      "strict_min_version": "58.0",
-      "data_collection_permissions": {
-        "required": [
-          "none"
-        ]
-      }
+      "id": "twitch5@coolcmd",
+      "strict_min_version": "58.0"
     }
   },
   "name": "Alternate Player for Twitch.tv (fMP4 mod)",
