@@ -22,10 +22,10 @@ await send('session.new', {capabilities: {}});
 try {
 	const {context} = await send('browsingContext.create', {type: 'tab'});
 	for (const test of tests) {
-		const [dir, n] = test.split(':');
-		await send('browsingContext.navigate', {context, url: `${baseUrl}/mse_test.html?dir=${dir}&n=${n}`, wait: 'complete'});
+		const [dir, n, wait] = test.split(':');
+		await send('browsingContext.navigate', {context, url: `${baseUrl}/mse_test.html?dir=${dir}&n=${n}${wait ? `&wait=${wait}` : ''}`, wait: 'complete'});
 		let value;
-		for (let i = 0; i < 60; i++) {
+		for (let i = 0; i < 120; i++) {
 			await new Promise(r => setTimeout(r, 500));
 			const r = await send('script.evaluate', {expression: 'JSON.stringify(window.result)', target: {context}, awaitPromise: false});
 			value = r.result.value;

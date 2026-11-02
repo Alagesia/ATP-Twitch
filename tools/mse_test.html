@@ -12,7 +12,7 @@
 <script>
 'use strict';
 const params = new URLSearchParams(location.search);
-const dir = params.get('dir'), count = Number(params.get('n') || 3);
+const dir = params.get('dir'), count = Number(params.get('n') || 3), playMs = Number(params.get('wait') || 4000);
 const video = document.getElementById('v');
 const log = s => { document.getElementById('log').textContent += s + '\n'; };
 window.result = {state: 'running', log: []};
@@ -63,7 +63,7 @@ window.result = {state: 'running', log: []};
 	video.currentTime = start;
 	step('playing');
 	await Promise.race([video.play().catch(e => { window.result.playError = String(e); }), new Promise(r => setTimeout(r, 4000))]);
-	await new Promise(r => setTimeout(r, 4000));
+	await new Promise(r => setTimeout(r, playMs));
 	const q = video.getVideoPlaybackQuality();
 	window.result = {
 		state: 'done', codecs: first.сКодеки, description: first.сСжатиеВидео, size: `${video.videoWidth}x${video.videoHeight}`,

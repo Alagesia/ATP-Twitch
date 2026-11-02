@@ -88,8 +88,31 @@ JSON) with reasons: `FR_CODEC_NOT_REQUESTED` (no `h265` in `supported_codecs`) a
 Verified: Apple's public HEVC Main 10 fMP4 sample (bipbop_adv_example_hevc, with B-frames and an
 extra caption track) remuxed by the worker inside Firefox and played via MSE at 1080p60 with 0
 dropped frames. Note: headless Firefox cannot decode HEVC on Windows (hardware-only decoder needs the
-GPU process), so HEVC tests need a normal window. Not verified: the real Twitch 1440p rendition,
-because it requires a logged-in viewer.
+GPU process), so HEVC tests need a normal window. The user confirmed live 1440p60 HEVC while logged in.
+
+## Real Twitch HEVC test data without logging in
+
+Usher withholds the HEVC rendition from anonymous VOD and live tokens, but a VOD's H.264 variant URLs are
+unsigned CloudFront paths (`https://<cdn>.cloudfront.net/<hash>_<login>_<id>_<ts>/1080p60/index-dvr.m3u8`);
+replacing `1080p60` with `chunked` returns the 1440p HEVC VOD playlist (init-N.mp4 + 10 s N.mp4 segments, each
+5 live 2 s segments back to back, split at the `emsg` boxes to get live-sized pieces).
+Twitch HEVC facts (lirik `hev1.1.2.L150.90`, strogo `hev1.1.6.L150.90`): `hev1` sample entry, video timescale
+1e6, **B-frames** (trun v0 composition offsets 16-66 ms, first PTS = DTS + 33 ms), IDR_W_RADL every 120 frames,
+in-band VPS/SPS/PPS identical to the hvcC, SEI in every access unit. Broadcaster-disconnect slates are a 1080p30
+HEVC L4.0 rendition from another encoder (IDR_N_LP, WPP, B-pyramid) behind `#EXT-X-DISCONTINUITY` + new MAP.
+
+## Playback errors (2026-11-02)
+
+J0206 means `HTMLMediaElement.error` was set; the original player discarded the code/message. A 6-agent
+investigation could not reproduce it on this PC (RTX 4070; Firefox's WebGL string "GTX 980" is a sanitized
+bucket name) with real Twitch HEVC, ad-break freeze frames, HEVC<->H.264 switches, the disconnect slate,
+in-band parameter-set changes, seeks or GPU/RDD process kills. Firefox decodes HEVC only in hardware (GPU
+process, no software fallback), so a transient decoder creation failure is the leading hypothesis.
+Now: the error text is logged; HEVC errors reload with a retry, then H.264 for the tab (`sessionStorage`
+`tw5-ошибка-hevc`); other errors open the report page; report pages offer the last 4 raw segments and the
+segments before the last playback error (IndexedDB `tw5-отладка`). The worker closes a video hole before a
+keyframe-led segment (a hole next to a 2 s frame is hidden in one buffered range and stalls Firefox; seen only
+with synthetic data - in the real lirik ad break Twitch stretched the last frame, so there was no hole).
 
 ## Tools (`tools/`)
 
@@ -103,6 +126,11 @@ because it requires a logged-in viewer.
 - `capture_official.mjs`: records the usher request of Twitch's own player
 - `mse_test.html` + `mse_firefox.mjs`: runs `worker.js` inside Firefox on fixture segments and plays
   the output via MSE (serve a folder with the page, worker.js, wasm.wasm, asmjs.js, fixtures/)
+  (`dir:count[:playMs]`)
+- `e2e_errorpaths.mjs <port> <extension dir> <channel>`: simulates HEVC and non-HEVC playback errors in
+  the real extension and checks the retry/H.264 fallback and the report page's download links
+- `probe_ads.py <channel>...`: compares the `site` and `picture-by-picture` (ad fallback, max 360p) playlists
 - All BiDi drivers expect a Firefox started with a throwaway profile:
   `firefox --no-remote --profile <tmp dir> --remote-debugging-port 9333 --remote-allow-system-access`
-  (add `--headless` except for HEVC decoding tests)
+  (add `--headless` except for HEVC decoding tests). Firefox 159+ also needs the environment variable
+  `MOZ_REMOTE_ALLOW_SYSTEM_ACCESS=1` to drive extension pages.

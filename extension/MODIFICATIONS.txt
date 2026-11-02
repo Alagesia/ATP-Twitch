@@ -21,6 +21,16 @@ Changes (2026-10-26):
     decode HEVC Main level 5.0, otherwise h264 as before. The statistics show the HEVC profile.
   - worker.js: hev1/hvc1 sample entries; hvcC is passed through, the codec string is derived from
     it, IRAP pictures (NAL types 16-23) are keyframes.
+- Playback errors (2026-11-02):
+  - A media error while HEVC is playing no longer stops the player: it reloads and tries HEVC again; a second
+    error within 10 minutes switches that tab to H.264 (at most 1080p) until the tab is closed.
+  - Any other media error shows the report page (with Firefox's error message and the log) instead of the bare
+    J0206 message. The report pages offer the last 4 raw segments, and the segments before the last playback
+    error (kept in IndexedDB across the reload), as downloads.
+  - worker.js closes a video hole before a segment that starts with a keyframe (Twitch ad-break freeze frames),
+    which Firefox would otherwise hide inside one buffered range and stall on.
+  - Ad markers in playlists (e.g. twitch-maf-ad) are logged; QuotaExceededError retry no longer dereferences a
+    replaced SourceBuffer.
 - Crash reports and feedback are no longer sent to the original developer; "Send" reloads the player.
 - manifest.json: name, author and version mark this build as modified. The add-on ID stays
   twitch5@coolcmd so that loading this version temporarily (about:debugging) replaces an installed

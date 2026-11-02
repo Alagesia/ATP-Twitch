@@ -1958,6 +1958,7 @@ var м_Журнал = (() => {
 		}
 		м_Журнал.Вот(сЗапись);
 		СостыковатьСегменты();
+		ЗаполнитьДыруВВидео();
 		if (_oMp4Audio !== null) {
 			_nAudioObjectType = _oMp4Audio.nAudioObjectType;
 			_чЧастотаДискретизации = _oMp4Audio.nSampleRate;
@@ -1992,6 +1993,25 @@ var м_Журнал = (() => {
 		}
 		_чПозицияКодирования = (_дорАудио.чВДНачала !== -1 ? _дорАудио.чВДНачала : _дорВидео.чВДНачала) / TS_TIMESCALE;
 		return true;
+	}
+	// At a Twitch ad break a segment can end its video early and the next one holds a single keyframe lasting 2 s.
+	// Firefox then hides the hole inside one buffered range and playback stalls for good, so the first keyframe is
+	// moved back to the end of the previous video and stretched over the hole (later samples keep their timestamps).
+	function ЗаполнитьДыруВВидео() {
+		if (_лРазрыв || _дорВидео.Пусто()) {
+			return;
+		}
+		var чДыра = _дорВидео.чВДНачала - _чВДКонцаПредыдущегоВидеоСегмента;
+		var уПервыйСемпл = _дорВидео.уНачалоСемплов;
+		if (чДыра <= 0 || чДыра > TS_TIMESCALE * 3 || _dvКуча.getUint32(уПервыйСемпл + ФЛАГИ_ВИДЕОСЕМПЛА) !== 0) {
+			return;
+		}
+		_dvКуча.setUint32(уПервыйСемпл + ДЛИТЕЛЬНОСТЬ_ВИДЕОСЕМПЛА, _dvКуча.getUint32(уПервыйСемпл + ДЛИТЕЛЬНОСТЬ_ВИДЕОСЕМПЛА) + чДыра);
+		if (_чВДПоследнегоВидеоСемпла === _дорВидео.чВДНачала) {
+			_чВДПоследнегоВидеоСемпла -= чДыра;
+		}
+		_дорВидео.чВДНачала -= чДыра;
+		м_Журнал.Ой(`Дыра в видео ${Мс(чДыра)} закрыта первым ключевым кадром сегмента`);
 	}
 	function ПолучитьБуферМедиасегмента(мбВход) {
 		var кбНужно = 256 + _дорВидео.ПолучитьРазмерСемплов() + _дорВидео.ПолучитьРазмерПотока() + _дорАудио.ПолучитьРазмерСемплов() + _дорАудио.ПолучитьРазмерПотока();

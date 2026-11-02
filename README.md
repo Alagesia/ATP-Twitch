@@ -21,7 +21,12 @@ of MPEG-TS. The original player only understands MPEG-TS and reports those strea
 - **1440p (HEVC).** Twitch offers the 1440p "source" rendition only in H.265/HEVC and only to
   logged-in viewers. When Firefox can decode HEVC, the player asks Twitch for it and plays it.
   Stay logged in on twitch.tv and pick "1440p60 (source)" in the quality menu.
-- Crash reports and feedback are not sent to the original developer.
+- **HEVC failures are not fatal.** If Firefox reports a playback error while 1440p (HEVC) is playing, the player
+  reloads and tries again; after a second error within 10 minutes that tab continues in 1080p (H.264). Open the
+  channel in a new tab to try 1440p again.
+- **Reports you can use.** Other playback errors show a report page with Firefox's error message and the log, and
+  the report pages (also via *Contact the extension developer* in the player menu) offer the last few raw video
+  segments for download. Crash reports and feedback are never sent to the original developer.
 - The add-on ID is unchanged (`twitch5@coolcmd`), so loading this version replaces an installed
   original for that Firefox session and keeps its settings.
 
