@@ -562,11 +562,22 @@ const м_Отладка = (() => {
 			ЗавершитьРаботуИОтправитьОтчет('ОТПРАВИТЬ ОТЗЫВ');
 		} catch (_) {}
 	}
+	//! A media error while HEVC is playing reloads the player (see м_Twitch.ЗапомнитьОшибкуHEVC).
+	function ОбработатьОшибкуВоспроизведения(сОшибка, лHEVC) {
+		if (!г_лРаботаЗавершена && лHEVC && м_Twitch.ЗапомнитьОшибкуHEVC(сОшибка)) {
+			console.error(сОшибка);
+			ЗавершитьРаботу(false);
+			window.location.reload();
+			throw void 0;
+		}
+		ЗавершитьРаботуИПоказатьСообщение('J0206');
+	}
 	return {
 		ПойманоИсключение,
 		ЗавершитьРаботуИПоказатьСообщение,
 		ЗавершитьРаботуИОтправитьОтчет,
 		ЗавершитьРаботуИОтправитьОтзыв,
+		ОбработатьОшибкуВоспроизведения,
 		сохранитьТокенТрансляции,
 		СохранитьСписокВариантов,
 		СохранитьСписокСегментов,
@@ -3521,6 +3532,7 @@ const м_Проигрыватель = (() => {
 	let _oMediaElement;
 	let _oMediaSource;
 	let _oMediaSourceBuffer = null;
+	let _сКодекиБуфера = '';
 	let _лЕстьВидеодорожка = false;
 	let _чВоспроизведениеНачиналось = 0;
 	let _лАсинхроннаяОперация = false;
@@ -3719,7 +3731,12 @@ const м_Проигрыватель = (() => {
 	}
 	function СледитьЗаОшибками() {
 		if (_oMediaElement.error) {
-			м_Отладка.ЗавершитьРаботуИПоказатьСообщение('J0206');
+			const сОшибка = `MediaError ${_oMediaElement.error.code}: ${_oMediaElement.error.message || '—'} Кодеки=${_сКодекиБуфера}`;
+			try {
+				ПоказатьСостояние('Ой', сОшибка);
+				г_моОчередь.ПоказатьСостояние();
+			} catch (_) {}
+			м_Отладка.ОбработатьОшибкуВоспроизведения(сОшибка, /\b(?:hev1|hvc1)\./.test(_сКодекиБуфера));
 		}
 	}
 	const СледитьЗаСобытиямиMediaSource = ДобавитьОбработчикИсключений(оСобытие => {
@@ -3970,7 +3987,7 @@ const м_Проигрыватель = (() => {
 							_oMediaSourceBuffer.appendBuffer(мбДобавить);
 						} else {
 							ПоказатьСостояние('Ой', 'После QuotaExceededError проигрыватель был перезагружен');
-							_oMediaSourceBuffer.removeEventListener('updateend', Добавлено);
+							oMediaSourceBuffer.removeEventListener('updateend', Добавлено);
 							фОтказаться(ОтменаОбещания.ПРИЧИНА);
 						}
 					} catch (пИсключение) {
@@ -4177,6 +4194,7 @@ const м_Проигрыватель = (() => {
 				м_Отладка.ПойманоИсключение(пИсключение);
 			}
 		}
+		_сКодекиБуфера = оСегмент.пДанные.сКодеки;
 		_лЕстьВидеодорожка = оСегмент.пДанные.лЕстьВидео;
 		_oMediaSourceBuffer.addEventListener('updatestart', СледитьЗаСобытиямиMediaSource);
 		_oMediaSourceBuffer.addEventListener('update', СледитьЗаСобытиямиMediaSource);
@@ -4476,6 +4494,7 @@ const м_Список = (() => {
 	let _лИдетРеклама = false;
 	let _чИнтервалОбновленияСпискаВариантов = -1;
 	let _чИдСессии = 1;
+	const _мсЗамеченныеМеткиРекламы = new Set();
 	function РазобратьСписок(лЭтоСписокВариантов, сАбсолютныйАдресСписка, сРазбираемыйСписок) {
 		const МАКС_ПОДДЕРЖИВАЕМАЯ_ВЕРСИЯ_HLS = 7;
 		if (сРазбираемыйСписок.includes('shelblock.proxy')) {
@@ -4639,6 +4658,11 @@ const м_Список = (() => {
 								сИдРолика5 = амАтрибуты.get('X-TV-TWITCH-AD-AD-SESSION-ID') || '';
 								сИдРолика6 = амАтрибуты.get('X-TV-TWITCH-AD-AD-FORMAT') || '';
 								Проверить(сТипРекламы);
+							}
+							const сКласс = амАтрибуты.get('CLASS') || '';
+							if (сКласс.endsWith('-ad') && !_мсЗамеченныеМеткиРекламы.has(амАтрибуты.get('ID'))) {
+								_мсЗамеченныеМеткиРекламы.add(амАтрибуты.get('ID'));
+								м_Журнал.Ой(`[Список] Метка рекламы CLASS=${сКласс} ID=${амАтрибуты.get('ID')} START-DATE=${амАтрибуты.get('START-DATE')} PLANNED-DURATION=${амАтрибуты.get('PLANNED-DURATION')}`);
 							}
 						} catch (пИсключение) {
 							сТипРекламы = '';
@@ -5729,10 +5753,51 @@ const м_Twitch = (() => {
 	//! Twitch offers the 1440p "source" rendition only in HEVC and only to logged-in viewers.
 	function получитьПоддерживаемыеКодеки() {
 		if (получитьПоддерживаемыеКодеки._сРезультат === void 0) {
-			получитьПоддерживаемыеКодеки._сРезультат = window.MediaSource && MediaSource.isTypeSupported('video/mp4;codecs="hev1.1.6.L150.90,mp4a.40.2"') ? 'h265,h264' : 'h264';
+			const оОшибка = прочестьОшибкуHEVC();
+			if (оОшибка) {
+				м_Журнал.Ой(`[Twitch] Ошибок воспроизведения HEVC: ${оОшибка.кОшибок}, последняя ${new Date(оОшибка.чВремя).toISOString()}: ${оОшибка.сОшибка}`);
+			}
+			if (оОшибка && оОшибка.лТолькоH264) {
+				получитьПоддерживаемыеКодеки._сРезультат = 'h264';
+				м_Уведомление.ПоказатьЖопу();
+			} else {
+				получитьПоддерживаемыеКодеки._сРезультат = window.MediaSource && MediaSource.isTypeSupported('video/mp4;codecs="hev1.1.6.L150.90,mp4a.40.2"') ? 'h265,h264' : 'h264';
+			}
 			м_Журнал.Окак(`[Twitch] Поддерживаемые кодеки: ${получитьПоддерживаемыеКодеки._сРезультат}`);
 		}
 		return получитьПоддерживаемыеКодеки._сРезультат;
+	}
+	const КЛЮЧ_ОШИБКИ_HEVC = 'tw5-ошибка-hevc';
+	const ЗАБЫТЬ_ОШИБКУ_HEVC_ЧЕРЕЗ = 6e5;
+	function прочестьОшибкуHEVC() {
+		try {
+			const оОшибка = JSON.parse(sessionStorage.getItem(КЛЮЧ_ОШИБКИ_HEVC));
+			return ЭтоОбъект(оОшибка) ? оОшибка : null;
+		} catch (_) {
+			return null;
+		}
+	}
+	//! A media error while HEVC is playing reloads the player. The first time HEVC is tried again; a second error
+	//! within 10 minutes switches this tab to H.264 (at most 1080p) until the tab is closed. Returns false when the
+	//! error cannot be remembered, so the caller does not reload in a loop.
+	function ЗапомнитьОшибкуHEVC(сОшибка) {
+		if (получитьПоддерживаемыеКодеки() !== 'h265,h264') {
+			return false;
+		}
+		const оПрежняя = прочестьОшибкуHEVC();
+		const чСейчас = Date.now();
+		const кОшибок = оПрежняя && чСейчас - оПрежняя.чВремя < ЗАБЫТЬ_ОШИБКУ_HEVC_ЧЕРЕЗ ? оПрежняя.кОшибок + 1 : 1;
+		try {
+			sessionStorage.setItem(КЛЮЧ_ОШИБКИ_HEVC, JSON.stringify({
+				кОшибок,
+				чВремя: чСейчас,
+				сОшибка,
+				лТолькоH264: кОшибок >= 2
+			}));
+			return true;
+		} catch (_) {
+			return false;
+		}
 	}
 	ПолучитьАбсолютныйАдресСпискаВариантов._чПротухнетПосле = -1;
 	ПолучитьАбсолютныйАдресСпискаВариантов._сАдрес = '';
@@ -6158,6 +6223,7 @@ const м_Twitch = (() => {
 	return {
 		этоРекламныйСегмент,
 		отправитьДанныеСлеженияЗаРекламой,
+		ЗапомнитьОшибкуHEVC,
 		ПолучитьАбсолютныйАдресСпискаВариантов,
 		ПолучитьАбсолютныйАдресСпискаСегментов,
 		ПолучитьАдресКанала,
